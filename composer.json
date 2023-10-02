@@ -1,0 +1,40 @@
+{
+  "name": "trk/component",
+    "description": "",
+    "type": "pw-module",
+    "keywords": [
+        "altivebir",
+        "wire",
+        "component"
+    ],
+    "homepage": "https://github.com/trk/Htmx",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Iskender TOTOGLU",
+            "email": "iskender@altivebir.com",
+            "homepage": "https://altivebir.com/"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Altivebir\\Component\\": [
+                "src"
+            ]
+        },
+        "files": [
+            "src/functions.php",
+            "FunctionsAPI.php"
+        ]
+    },
+  "require": {
+      "php": ">=7.0"
+  },
+  "config": {
+    "process-timeout": 0,
+    "allow-plugins": {
+      "hari/pw-module": true
+    }
+  },
+  "minimum-stability": "dev"
+}
