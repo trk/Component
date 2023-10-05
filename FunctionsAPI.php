@@ -32,6 +32,7 @@ function getComponentTemplate(string $dir, string $template): string {
     foreach ([
         "{$templatesPath}/{$component}-{$template}.php",
         "{$templatesPath}/{$component}/template-{$template}.php",
+        "{$dir}/template-{$template}.php",
         "{$dir}/template-default.php",
     ] as $filename) {
         if ($tpl) {
