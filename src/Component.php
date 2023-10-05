@@ -77,7 +77,7 @@ class Component
         return [];
     }
 
-    public function render(string $component, array $params = []): string
+    public function render(string $component, array $params = [], array $attrs = []): string
     {
         $component = $this->getComponent($component);
 
@@ -98,6 +98,18 @@ class Component
         }
 
         $component['fn'] = isset($component['fn']) && is_array($component['fn']) ? array_merge($this->getFunctions(), $component['fn']) : $this->getFunctions();
+
+        if (!isset($attrs['id'])) {
+            $attrs['id'] = '';
+        }
+
+        if (!isset($attrs['class'])) {
+            $attrs['class'] = [];
+        } else if (isset($attrs['class']) && is_string($attrs['class'])) {
+            $attrs['class'] = [$attrs['class']];
+        }
+
+        $component['attrs'] = $attrs;
 
         return $render ? wire('files')->render($component['template'], $component) : '';
     }

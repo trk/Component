@@ -89,11 +89,8 @@ namespace ProcessWire;
 /**
  * @var \Altivebir\Component $component
  * @var array $params
+ * @var array $attrs
  */
-
-$attrs = [
-    'class' => []
-];
 
 if ($params['size']) {
     $attrs['class'][] = "uk-{$params['size']}";
