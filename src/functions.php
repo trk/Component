@@ -1,3 +1,3 @@
 <?php
 
-namespace Altivebir\Htmx;
+namespace Altivebir\Component;

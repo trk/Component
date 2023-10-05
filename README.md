@@ -87,7 +87,6 @@ return [
 namespace ProcessWire;
 
 /**
- * @var \Altivebir\Component $component
  * @var array $params
  * @var array $attrs
  */
