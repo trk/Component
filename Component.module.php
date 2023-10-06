@@ -176,7 +176,7 @@ class Component extends WireData implements Module, ConfigurableModule
 
         if (isset($component['render'])) {
             if ($component['render'] instanceof \Closure) {
-                $render = $component['render']($params);
+                $render = $component['render']($component['params']);
             } else {
                 $render = $component['render'];
             }
