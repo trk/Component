@@ -129,6 +129,14 @@ class Component extends WireData implements Module, ConfigurableModule
         return $data;
     }
 
+    public function ___transform(array $component): array
+    {
+        if (isset($component['transform']) && $component['transform'] instanceof \Closure) {
+            $component['params'] = $component['transform']($component['params']);
+        }
+        return $component['params'];
+    }
+
     public function ___getAttrs(array $attrs): array
     {
         if (!isset($attrs['id'])) {
@@ -171,6 +179,7 @@ class Component extends WireData implements Module, ConfigurableModule
         }
 
         $component['params'] = array_merge($component['params'], $params);
+        $component['params'] = $this->transform($component);
 
         $render = true;
 
@@ -185,7 +194,7 @@ class Component extends WireData implements Module, ConfigurableModule
         if (!$render) {
             return '';
         }
-
+        
         $component['attrs'] = $this->getAttrs($attrs);
         $component['fn'] = $this->getFunctions($component);
         $component = $this->renderReady($component);
