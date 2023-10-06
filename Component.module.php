@@ -137,7 +137,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return $component['params'];
     }
 
-    public function ___getAttrs(array $attrs): array
+    public function ___getAttrs(array $attrs, array $component): array
     {
         if (!isset($attrs['id'])) {
             $attrs['id'] = '';
@@ -170,7 +170,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return $component;
     }
 
-    public function render(string $component, array $params = [], array $attrs = []): string
+    public function ___render(string $component, array $params = [], array $attrs = []): string
     {
         $component = $this->getComponent($component);
 
@@ -195,7 +195,7 @@ class Component extends WireData implements Module, ConfigurableModule
             return '';
         }
         
-        $component['attrs'] = $this->getAttrs($attrs);
+        $component['attrs'] = $this->getAttrs($attrs, $component);
         $component['fn'] = $this->getFunctions($component);
         $component = $this->renderReady($component);
         
