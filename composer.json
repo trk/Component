@@ -28,7 +28,7 @@
         ]
     },
   "require": {
-      "php": ">=7.0"
+      "php": ">=8.1"
   },
   "config": {
     "process-timeout": 0,

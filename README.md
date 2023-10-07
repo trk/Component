@@ -30,7 +30,7 @@ directories for the components. If you want to use default params create a `comp
 ## Requirements
 
 * ProcessWire `3.0` or newer
-* PHP `7.0` or newer
+* PHP `8.1` or newer
 
 ## Installation
 

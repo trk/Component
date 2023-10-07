@@ -30,7 +30,7 @@ class Component extends WireData implements Module, ConfigurableModule
             'href' => 'https://www.altivebir.com',
             'author' => 'İskender TOTOĞLU | @ukyo(community), @trk (Github), https://www.altivebir.com',
             'requires' => [
-                'PHP>=7.0',
+                'PHP>=8.1',
                 'ProcessWire>=3.0'
             ],
             'installs' => [],
