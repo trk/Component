@@ -177,7 +177,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return $component;
     }
 
-    public function ___render(string $component, array $params = [], array $attrs = []): string
+    public function ___render(string $component, array $params = [], array $attrs = [], string $cacheName = '', int|Page|string|null $expire = null): string
     {
         $component = $this->getComponent($component);
 
@@ -205,6 +205,18 @@ class Component extends WireData implements Module, ConfigurableModule
         $component['fn'] = $this->applyFunctions($component);
         $component['attrs'] = $this->getAttrs($attrs, $component);
         $component = $this->renderReady($component);
+
+        if ($cacheName && $expire && ($this->wire()->config->debug || $this->wire()->user->isSuperuser())) {
+            $expire = 0;
+        }
+
+        // if we use directly this method, result directly stored in database, check for cache name and expire before store output
+        if ($cacheName && $expire) {
+            return $this->wire()->cache->renderFile($component['template'], $expire, [
+                'name' => "{$component['name']}-{$cacheName}",
+                'vars' => $component
+            ]);
+        }
         
         return $this->wire()->files->render($component['template'], $component);
     }

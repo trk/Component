@@ -23,18 +23,28 @@ function componentAttrs(array $attrs = []): string {
     return $output ? " {$output}" : '';
 }
 
-function getComponentTemplate(string $dir, string $template): string {
+function getComponentTemplate(string $dir, string $template = ''): string {
     $explode = explode(DIRECTORY_SEPARATOR, dirname($dir));
     $component = end($explode);
     $templatesPath = wire('config')->paths->templates . 'components/templates';
     $tpl = '';
     
-    foreach ([
-        "{$templatesPath}/{$component}/template-{$template}.php",
-        "{$templatesPath}/{$component}-{$template}.php",
-        "{$dir}/template-{$template}.php",
-        "{$dir}/template-default.php",
-    ] as $filename) {
+    if ($template) {
+        $paths = [
+            "{$templatesPath}/{$component}/template-{$template}.php",
+            "{$templatesPath}/{$component}-{$template}.php",
+            "{$dir}/template-{$template}.php",
+        ];
+    } else {
+        $paths = [
+            "{$templatesPath}/{$component}/template-default.php",
+            "{$templatesPath}/{$component}-default.php",
+        ];
+    }
+
+    $paths[] = "{$dir}/template-default.php";
+    
+    foreach ($paths as $filename) {
         if ($tpl) {
             continue;
         }
