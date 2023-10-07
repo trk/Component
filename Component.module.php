@@ -15,8 +15,6 @@ class Component extends WireData implements Module, ConfigurableModule
 
     protected array $loaded = [];
 
-    protected array $hooks = [];
-
     /**
      * Return module info
      *
@@ -74,14 +72,7 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     public function ready()
     {
-        $this->wire()->addHookMethod('TemplateFile::attrs', function (HookEvent $e) {
-            $attrs = $e->arguments(0, []);
-            if (is_array($attrs)) {
-                $e->return = componentAttrs($attrs);
-            }
-        });
-
-        bd($this->hooks);
+        $this->applyTemplateFileMethods();
     }
 
     protected function setComponents(): void
@@ -139,6 +130,16 @@ class Component extends WireData implements Module, ConfigurableModule
         return $data;
     }
 
+    public function ___applyTemplateFileMethods(): void
+    {
+        $this->wire()->addHookMethod('TemplateFile::attrs', function (HookEvent $e) {
+            $attrs = $e->arguments(0, []);
+            if (is_array($attrs)) {
+                $e->return = componentAttrs($attrs);
+            }
+        });
+    }
+
     public function ___transform(array $component): array
     {
         if (isset($component['transform']) && $component['transform'] instanceof \Closure) {
@@ -162,7 +163,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return $attrs;
     }
 
-    public function ___applyFunctions(array $component)
+    public function ___applyFunctions(array $component): void
     {   
         if (isset($component['fn']) && is_array($component['fn'])) {
             foreach ($component['fn'] as $name => $fn) {
