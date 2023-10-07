@@ -185,7 +185,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return $component;
     }
 
-    public function ___render(string $component, array $params = [], array $attrs = [], string $cacheName = '', int|Page|string|null $expire = null): string
+    public function ___render(string $component, array $params = [], array $attrs = [], string|null $cacheName = null, int|Page|string|null $cacheExpire = null): string
     {
         $component = $this->getComponent($component);
 
@@ -214,14 +214,34 @@ class Component extends WireData implements Module, ConfigurableModule
         $component['attrs'] = $this->getAttrs($attrs, $component);
         $component = $this->renderReady($component);
 
-        if ($cacheName && $expire && ($this->wire()->config->debug || $this->wire()->user->isSuperuser())) {
-            $expire = 0;
+        $cache = [
+            'name' => $cacheName,
+            'expire' => $cacheExpire
+        ];
+
+        if (!$cache['name'] && !$cache['expire'] && isset($component['cache'])) {
+            if ($component['cache'] instanceof \Closure) {
+                $component['cache'] = $component['cache']($component);
+            }
+
+            if (is_array($component['cache'])) {
+                if (isset($component['cache']['name'])) {
+                    $cache['name'] = $component['cache']['name'];
+                }
+                if (isset($component['cache']['expire'])) {
+                    $cache['expire'] = $component['cache']['expire'];
+                }
+            }
+        }
+
+        if ($cache['name'] && $cache['expire'] && ($this->wire()->config->debug || $this->wire()->user->isSuperuser())) {
+            $cache['expire'] = 0;
         }
 
         // if we use directly this method, result directly stored in database, check for cache name and expire before store output
-        if ($cacheName && $expire) {
-            return $this->wire()->cache->renderFile($component['template'], $expire, [
-                'name' => "{$component['name']}-{$cacheName}",
+        if ($cache['name'] && $cache['expire']) {
+            return $this->wire()->cache->renderFile($component['template'], $cache['expire'], [
+                'name' => "component-{$component['name']}-{$cache['name']}",
                 'vars' => $component
             ]);
         }
