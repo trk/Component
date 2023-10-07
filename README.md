@@ -27,7 +27,7 @@ directories for the components. If you want to use default params create a `comp
         ├── component.php (not required)
         └── templates
             └── template.php (required)
-````
+```
 
 ## Requirements
 
@@ -36,17 +36,17 @@ directories for the components. If you want to use default params create a `comp
 
 ## Installation
 
-Install the module from the [modules directory](https://modules.processwire.com/modules/component/):
+Install the module from the [modules directory](https://modules.processwire.com/modules/component/)
 
 Via `Composer`:
 
-```
+```shell
 composer require trk/component
 ```
 
 Via `git clone`:
 
-```
+```shell
 cd your-processwire-project-folder/
 cd site/modules/
 git clone https://github.com/trk/Component.git
