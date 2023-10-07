@@ -160,6 +160,14 @@ class Component extends WireData implements Module, ConfigurableModule
             $attrs['class'] = [$attrs['class']];
         }
 
+        if (isset($component['attrs'])) {
+            if ($component['attrs'] instanceof \Closure) {
+                $attrs = $component['attrs']($attrs);
+            } else if (is_array($component['attrs'])) {
+                $attrs = array_merge($attrs, $component['attrs']);
+            }
+        }
+
         return $attrs;
     }
 
