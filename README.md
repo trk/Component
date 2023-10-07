@@ -71,6 +71,11 @@ return [
         'color' => '',
         'align' => ''
     ],
+    'fn' => [
+        'hello' => function (HookEvent $e) {
+            $e->return = 'Hello World';
+        }
+    ],
     // Check component has required parameters
     'render' => function(array $params): bool {
         return strlen($params['content']) ?: false;
@@ -111,7 +116,10 @@ if ($params['align']) {
     $attrs['class'][] = "uk-text-{$params['align']}";
 }
 
-echo "<{$params['tag']}{$component->attrs($attrs)}>{$params['content']}</{$params['tag']}>";
+// $this->hello(); added dynamically as function
+// $this->attrs(array $attrs); Accept array of attributes, return is string
+
+echo "<{$params['tag']}{$this->attrs($attrs)}>{$params['content']}</{$params['tag']}>";
 
 ```
 

@@ -15,6 +15,8 @@ class Component extends WireData implements Module, ConfigurableModule
 
     protected array $loaded = [];
 
+    protected array $hooks = [];
+
     /**
      * Return module info
      *
@@ -72,7 +74,14 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     public function ready()
     {
-        // do some stuff
+        $this->wire()->addHookMethod('TemplateFile::attrs', function (HookEvent $e) {
+            $attrs = $e->arguments(0, []);
+            if (is_array($attrs)) {
+                $e->return = componentAttrs($attrs);
+            }
+        });
+
+        bd($this->hooks);
     }
 
     protected function setComponents(): void
@@ -153,17 +162,13 @@ class Component extends WireData implements Module, ConfigurableModule
         return $attrs;
     }
 
-    public function ___getFunctions(array $component): array
-    {
-        $functions = [
-            //
-        ];
-        
+    public function ___applyFunctions(array $component)
+    {   
         if (isset($component['fn']) && is_array($component['fn'])) {
-            $functions += $component['fn'];
+            foreach ($component['fn'] as $name => $fn) {
+                $this->wire()->addHookMethod("TemplateFile::{$name}", $fn);
+            }
         }
-
-        return $functions;
     }
 
     public function ___renderReady(array $component): array
@@ -196,8 +201,8 @@ class Component extends WireData implements Module, ConfigurableModule
             return '';
         }
         
+        $component['fn'] = $this->applyFunctions($component);
         $component['attrs'] = $this->getAttrs($attrs, $component);
-        $component['fn'] = $this->getFunctions($component);
         $component = $this->renderReady($component);
         
         return $this->wire()->files->render($component['template'], $component);
