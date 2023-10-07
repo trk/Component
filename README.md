@@ -52,7 +52,7 @@ cd site/modules/
 git clone https://github.com/trk/Component.git
 ```
 
-### Create Component Config File **not required**
+### Create `heading` Component Config File **not required**
 
 ```php
 // site/templates/components/heading/component.php
@@ -78,7 +78,7 @@ return [
 ];
 ```
 
-### Create Template File **required**
+### Create `heading` Template File **required**
 
 ```php
 // site/templates/components/heading/templates/template.php
@@ -115,7 +115,7 @@ echo "<{$params['tag']}{$component->attrs($attrs)}>{$params['content']}</{$param
 
 ```
 
-### Print Component
+### Print `heading` Component
 
 ```php
 echo component('heading', [

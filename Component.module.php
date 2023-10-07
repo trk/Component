@@ -24,6 +24,7 @@ class Component extends WireData implements Module, ConfigurableModule
     {
         return [
             'title' => 'Component',
+            'description' => 'Module help you to create and use set of components to utilise in your ProcessWire page templates.',
             'version' => 1,
             'summary' => '',
             'href' => 'https://www.altivebir.com',
