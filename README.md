@@ -1,7 +1,5 @@
 # Component Module for ProcessWire CMS/CMF
 
-
-
 Module will check :
 
 - `site/modules/**/components/*/templates/template.php`
@@ -83,7 +81,7 @@ return [
 ];
 ```
 
-### Create `heading` Template File **required**
+### Create `heading` Template File **required**
 
 ```php
 // site/templates/components/heading/templates/template.php
