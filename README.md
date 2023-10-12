@@ -106,7 +106,11 @@ return [
     // Check component has required parameters
     'render' => function(array $params): bool {
         return strlen($params['content']) ?: false;
-    }
+    },
+    // Do something with output
+    // 'output' => function(string $output): bool {
+    //     return str_replace('<alert />', component('alert', ['content' => 'Warning !']), $output);
+    // }
 ];
 ```
 
