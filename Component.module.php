@@ -180,6 +180,11 @@ class Component extends WireData implements Module, ConfigurableModule
         }
     }
 
+    public function ___cacheable(): bool
+    {
+        return !$this->wire()->config->debug || !$this->wire()->user->isSuperuser();
+    }
+
     public function ___renderReady(array $component): array
     {
         return $component;
@@ -214,36 +219,40 @@ class Component extends WireData implements Module, ConfigurableModule
         $component['attrs'] = $this->getAttrs($attrs, $component);
         $component = $this->renderReady($component);
 
-        $cache = [
-            'name' => $cacheName,
-            'expire' => $cacheExpire
-        ];
-
-        if (!$cache['name'] && !$cache['expire'] && isset($component['cache'])) {
-            if ($component['cache'] instanceof \Closure) {
-                $component['cache'] = $component['cache']($component);
+        if ($this->cacheable()) {
+            
+            $cache = [
+                'name' => $cacheName,
+                'expire' => $cacheExpire
+            ];
+    
+            if (!$cache['name'] && !$cache['expire'] && isset($component['cache'])) {
+                if ($component['cache'] instanceof \Closure) {
+                    $component['cache'] = $component['cache']($component);
+                }
+    
+                if (is_array($component['cache'])) {
+                    if (isset($component['cache']['name'])) {
+                        $cache['name'] = $component['cache']['name'];
+                    }
+                    if (isset($component['cache']['expire'])) {
+                        $cache['expire'] = $component['cache']['expire'];
+                    }
+                }
+            }
+    
+            if ($cache['name'] && $cache['expire'] && ($this->wire()->config->debug || $this->wire()->user->isSuperuser())) {
+                $cache['expire'] = 0;
+            }
+    
+            // if we use directly this method, result directly stored in database, check for cache name and expire before store output
+            if ($cache['name'] && $cache['expire']) {
+                $output = $this->wire()->cache->renderFile($component['template'], $cache['expire'], [
+                    'name' => "component-{$component['name']}-{$cache['name']}",
+                    'vars' => $component
+                ]);
             }
 
-            if (is_array($component['cache'])) {
-                if (isset($component['cache']['name'])) {
-                    $cache['name'] = $component['cache']['name'];
-                }
-                if (isset($component['cache']['expire'])) {
-                    $cache['expire'] = $component['cache']['expire'];
-                }
-            }
-        }
-
-        if ($cache['name'] && $cache['expire'] && ($this->wire()->config->debug || $this->wire()->user->isSuperuser())) {
-            $cache['expire'] = 0;
-        }
-
-        // if we use directly this method, result directly stored in database, check for cache name and expire before store output
-        if ($cache['name'] && $cache['expire']) {
-            $output = $this->wire()->cache->renderFile($component['template'], $cache['expire'], [
-                'name' => "component-{$component['name']}-{$cache['name']}",
-                'vars' => $component
-            ]);
         }
         
         $output = $this->wire()->files->render($component['template'], $component);
@@ -251,7 +260,7 @@ class Component extends WireData implements Module, ConfigurableModule
         if (isset($component['output']) && $component['output'] instanceof \Closure) {
             return $component['output']($output);
         }
-        
+
         return $output;
     }
 
