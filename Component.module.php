@@ -143,7 +143,7 @@ class Component extends WireData implements Module, ConfigurableModule
     public function ___transform(array $component): array
     {
         if (isset($component['transform']) && $component['transform'] instanceof \Closure) {
-            $component['params'] = $component['transform']($component['params']);
+            $component['params'] = $component['transform']($component['params'], $component);
         }
         return $component['params'];
     }
@@ -162,7 +162,7 @@ class Component extends WireData implements Module, ConfigurableModule
 
         if (isset($component['attrs'])) {
             if ($component['attrs'] instanceof \Closure) {
-                $attrs = $component['attrs']($attrs);
+                $attrs = $component['attrs']($attrs, $component);
             } else if (is_array($component['attrs'])) {
                 $attrs = array_merge($attrs, $component['attrs']);
             }
@@ -240,13 +240,19 @@ class Component extends WireData implements Module, ConfigurableModule
 
         // if we use directly this method, result directly stored in database, check for cache name and expire before store output
         if ($cache['name'] && $cache['expire']) {
-            return $this->wire()->cache->renderFile($component['template'], $cache['expire'], [
+            $output = $this->wire()->cache->renderFile($component['template'], $cache['expire'], [
                 'name' => "component-{$component['name']}-{$cache['name']}",
                 'vars' => $component
             ]);
         }
         
-        return $this->wire()->files->render($component['template'], $component);
+        $output = $this->wire()->files->render($component['template'], $component);
+
+        if (isset($component['output']) && $component['output'] instanceof \Closure) {
+            return $component['output']($output);
+        }
+        
+        return $output;
     }
 
     /**
