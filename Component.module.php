@@ -227,6 +227,7 @@ class Component extends WireData implements Module, ConfigurableModule
             ];
     
             if (!$cache['name'] && !$cache['expire'] && isset($component['cache'])) {
+
                 if ($component['cache'] instanceof \Closure) {
                     $component['cache'] = $component['cache']($component);
                 }
@@ -239,16 +240,13 @@ class Component extends WireData implements Module, ConfigurableModule
                         $cache['expire'] = $component['cache']['expire'];
                     }
                 }
-            }
-    
-            if ($cache['name'] && $cache['expire'] && ($this->wire()->config->debug || $this->wire()->user->isSuperuser())) {
-                $cache['expire'] = 0;
+                
             }
     
             // if we use directly this method, result directly stored in database, check for cache name and expire before store output
             if ($cache['name'] && $cache['expire']) {
                 $output = $this->wire()->cache->renderFile($component['template'], $cache['expire'], [
-                    'name' => "component-{$component['name']}-{$cache['name']}",
+                    'name' => $this->className() . "-{$component['name']}-{$cache['name']}",
                     'vars' => $component
                 ]);
             }
@@ -275,7 +273,35 @@ class Component extends WireData implements Module, ConfigurableModule
         /** @var Modules $modules */
         $modules = $this->wire()->modules;
 
-        // do some stuff
+        $cachePrefix = "cache.{$this->className()}-*";
+        $cached = $this->wire()->cache->get($cachePrefix);
+
+        // clear cache action
+        if ($this->input->post->get("clear_cache") ? true : false) {
+            $this->wire()->cache->deleteFor($cachePrefix);
+            $this->message(sprintf($this->_('%d components cache data cleared successfully'), count($cached)));
+            $cached = $this->wire()->cache->get($cachePrefix);
+        }
+
+        /** @var InputfieldFieldset @fieldset */
+        $fieldset = $modules->get('InputfieldFieldset');
+        $fieldset->label = $this->_('Clear components cache data');
+        $fieldset->icon = 'icon-refresh';
+        $fieldset->collapsed = Inputfield::collapsedYes;
+
+        /**
+         * @var InputfieldCheckbox $checkbox
+         */
+        $checkbox = $modules->get('InputfieldCheckbox');
+        $checkbox->attr('name', "clear_cache");
+        $checkbox->attr('value', 1);
+        $checkbox->label = $this->_('Clear component cache data ?');
+        $checkbox->description = sprintf($this->_('There are currently %d components cached'), count($cached));
+        $checkbox->checkboxLabel = $this->_('Clear cache data');
+
+        $fieldset->add($checkbox);
+
+        $inputfields->add($fieldset);
         
         return $inputfields;
     }
