@@ -83,7 +83,7 @@ return [
 
         return [
             'name' => $page->id,
-            'expire' => $page
+            'expire' => $expire
         ];
     },
     'transform' => function (array $params): array {
