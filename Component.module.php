@@ -2,6 +2,8 @@
 
 namespace ProcessWire;
 
+use Altivebir\Component\Element;
+
 /**
  * Component Module for ProcessWire
  *
@@ -25,7 +27,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return [
             'title' => 'Component',
             'description' => 'Module help you to create and use set of components to utilise in your ProcessWire page templates.',
-            'version' => 1,
+            'version' => 2,
             'summary' => '',
             'href' => 'https://www.altivebir.com',
             'author' => 'İskender TOTOĞLU | @ukyo(community), @trk (Github), https://www.altivebir.com',
@@ -132,11 +134,20 @@ class Component extends WireData implements Module, ConfigurableModule
 
     public function ___applyTemplateFileMethods(): void
     {
+        $this->wire()->addHookMethod('TemplateFile::el', function (HookEvent $e) {
+            $name = $e->arguments(0);
+            $attrs = $e->arguments(1);
+            $contents = $e->arguments(2);
+            
+            $e->return = new Element($name ?: 'div', is_array($attrs) ? $attrs : [], $contents);
+        });
+
         $this->wire()->addHookMethod('TemplateFile::attrs', function (HookEvent $e) {
-            $attrs = $e->arguments(0, []);
-            if (is_array($attrs)) {
-                $e->return = componentAttrs($attrs);
+            $attrs = $e->arguments(0);
+            if (!is_array($attrs)) {
+                $attrs = [];
             }
+            $e->return = Element::attrs($attrs);
         });
     }
 
