@@ -1,6 +1,6 @@
 <?php
 
-namespace Altivebir\Component;
+namespace Totoglu\Component;
 
 /**
  * A static class which provides utilities for working with arrays.
@@ -243,7 +243,15 @@ abstract class Arr
      */
     public static function every($array, $predicate)
     {
-        return count($array) === count(static::filter($array, $predicate));
+        $callback = is_callable($predicate) ? $predicate : static::matches($predicate);
+
+        foreach ($array as $key => $value) {
+            if (!$callback($value, $key)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -313,7 +321,7 @@ abstract class Arr
      * @example
      * $array = ['a' => 1, 'b' => 2, 'c' => 3];
      *
-     * Arr::omit($array, ['b']));
+     * Arr::omit($array, ['b']);
      * // ['a' => 1, 'c' => 3];
      */
     public static function omit($array, $predicate)
@@ -489,7 +497,7 @@ abstract class Arr
             $result[] = array_slice(
                 $array,
                 $i * $rows - max($i - $remainder, 0),
-                $rows - ($i >= $remainder ? 1 : 0)
+                $rows - ($i >= $remainder ? 1 : 0),
             );
         }
 
@@ -571,7 +579,7 @@ abstract class Arr
         $array = array_merge(
             array_slice($array, 0, $offset, true),
             static::wrap($replacement),
-            $offset !== null ? array_slice($array, $offset + $length, null, true) : []
+            $offset !== null ? array_slice($array, $offset + $length, null, true) : [],
         );
 
         return $result;

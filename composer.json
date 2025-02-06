@@ -3,7 +3,7 @@
     "description": "",
     "type": "pw-module",
     "keywords": [
-        "altivebir",
+        "totoglu",
         "wire",
         "component"
     ],
@@ -12,13 +12,13 @@
     "authors": [
         {
             "name": "Iskender TOTOGLU",
-            "email": "iskender@altivebir.com",
-            "homepage": "https://altivebir.com/"
+            "email": "iskender@totoglu.com",
+            "homepage": "https://totoglu.com/"
         }
     ],
     "autoload": {
         "psr-4": {
-            "Altivebir\\Component\\": [
+            "Totoglu\\Component\\": [
                 "src"
             ]
         },

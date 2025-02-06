@@ -8,6 +8,6 @@ namespace ProcessWire;
  * @var array $attrs
  */
 
-$template = getComponentTemplate(__DIR__, $params['theme']);
+$template = $this->getComponentTemplate(__DIR__, $params['theme']);
 
 echo $files->render($template, compact('files', 'params', 'attrs'));

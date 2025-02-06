@@ -1,3 +1,3 @@
 <?php
 
-namespace Altivebir\Component;
+namespace Totoglu\Component;

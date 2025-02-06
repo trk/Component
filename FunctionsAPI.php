@@ -2,42 +2,19 @@
 
 namespace ProcessWire;
 
-/**
- * 
- */
-function component(string $component, array $params = [], array $attrs = []): string {
-    return wire('component')->render($component, $params, $attrs);
+function component(string|array $component, array $params = [], array $attrs = [], string|null $cacheName = null, int|Page|string|null $cacheExpire = null): string {
+    return wire('component')->render($component, $params, $attrs, $cacheName, $cacheExpire);
 }
 
-function getComponentTemplate(string $dir, string $template = ''): string {
-    $explode = explode(DIRECTORY_SEPARATOR, dirname($dir));
-    $component = end($explode);
-    $templatesPath = wire('config')->paths->templates . 'components/templates';
-    $tpl = '';
-    
-    if ($template) {
-        $paths = [
-            "{$templatesPath}/{$component}/template-{$template}.php",
-            "{$templatesPath}/{$component}-{$template}.php",
-            "{$dir}/template-{$template}.php",
-        ];
-    } else {
-        $paths = [
-            "{$templatesPath}/{$component}/template-default.php",
-            "{$templatesPath}/{$component}-default.php",
-        ];
-    }
+function renderComponentChildren(array $children, ?array $parent = null): string {
+    return wire('component')->renderChildren($children, $parent);
+}
 
-    $paths[] = "{$dir}/template-default.php";
-    
-    foreach ($paths as $filename) {
-        if ($tpl) {
-            continue;
-        }
-        if (file_exists($filename)) {
-            $tpl = $filename;
-        }
-    }
-    
-    return $tpl;
+function renderComponentChild(array $child, ?array $parent = null): string {
+    return wire('component')->renderChild($child, $parent);
+}
+
+function loadComponent(string $name, array $params = [], array $attrs = []): ?array
+{
+    return wire('component')->loadComponent($name, $params, $attrs);
 }

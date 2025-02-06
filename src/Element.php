@@ -1,6 +1,6 @@
 <?php
 
-namespace Altivebir\Component;
+namespace Totoglu\Component;
 
 class Element
 {
@@ -19,21 +19,15 @@ class Element
      */
     public $contents;
 
-    /**
-     * Constructor.
-     *
-     * @param string $name
-     * @param array $attrs
-     * @param mixed $contents
-     */
     public function __construct(
         $name,
         array $attrs = [],
-        $contents = ''
+        $contents = '',
     ) {
         $this->name = $name;
         $this->attrs = $attrs;
         $this->contents = $contents;
+
     }
 
     /**
@@ -191,7 +185,7 @@ class Element
                 $output[] = sprintf(
                     '%s="%s"',
                     $key,
-                    htmlspecialchars($value, ENT_COMPAT, 'UTF-8', false)
+                    htmlspecialchars($value, ENT_COMPAT, 'UTF-8', false),
                 );
             }
         }
@@ -227,7 +221,7 @@ class Element
             if (
                 $expression = self::evaluateExpression(
                     $expression,
-                    array_replace($params, (array) $condition)
+                    array_replace($params, (array) $condition),
                 )
             ) {
                 $output[] = $expression;
@@ -295,7 +289,7 @@ class Element
             function ($matches) use (&$optionals) {
                 return '%' . array_push($optionals, $matches[1]) . '$s';
             },
-            $expression
+            $expression,
         );
 
         // match all parameters
@@ -303,7 +297,7 @@ class Element
             '/\{\s*(@?)(!?)(\w+)\s*(?::\s*([^{}]*(?:\{(?-1)\}[^{}]*)*))?\}/',
             $output,
             $parameters,
-            PREG_SET_ORDER
+            PREG_SET_ORDER,
         );
 
         return $expressions[$expression] = [$output, $parameters, $optionals];
@@ -330,11 +324,11 @@ class Element
 
             $regex = isset($match[4]) ? "/^({$match[4]})$/" : '';
             $value = $params[$name] ?? '';
-            $result =
-                (!$regex && ((is_string($value) && $value != '') || $value)) ||
-                ($regex && preg_match($regex, $value));
+            $result = $regex
+                ? preg_match($regex, $value)
+                : $value || (is_string($value) && $value !== '');
 
-            if (($result && !$negate) || (!$result && $negate)) {
+            if ($result xor $negate) {
                 $output = str_replace($parameter, $empty ? '' : $value, $output);
             } else {
                 return '';

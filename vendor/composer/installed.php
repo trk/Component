@@ -3,7 +3,7 @@
         'name' => 'trk/component',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '90b31460ad9461a34f8c73a963d681f1969cb670',
+        'reference' => '8b973cca955a29fd60c933da9ff9a6d35f5e518b',
         'type' => 'pw-module',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'trk/component' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '90b31460ad9461a34f8c73a963d681f1969cb670',
+            'reference' => '8b973cca955a29fd60c933da9ff9a6d35f5e518b',
             'type' => 'pw-module',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

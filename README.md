@@ -12,7 +12,11 @@ directories for the components. If you want to use default params create a `comp
 ```
 └── site/templates/components
     └── name-of-component
-        ├── component.php (not required)
+        ├── component.php (optional)
+        ├── layout-default.php (optional)
+        ├── layout-home.php (optional)
+        ├── layout-contact.php (optional)
+        ├── fields.php (optional)
         └── templates
             └── template.php (required)
 ```
@@ -22,7 +26,11 @@ directories for the components. If you want to use default params create a `comp
 ```
 └── site/modules/name-of-module/components
     └── name-of-component
-        ├── component.php (not required)
+        ├── component.php (optional)
+        ├── layout-default.php (optional)
+        ├── layout-home.php (optional)
+        ├── layout-contact.php (optional)
+        ├── fields.php (optional)
         └── templates
             └── template.php (required)
 ```
@@ -48,6 +56,89 @@ Via `git clone`:
 cd your-processwire-project-folder/
 cd site/modules/
 git clone https://github.com/trk/Component.git
+```
+### All `component.php` file settings
+
+```php
+<?php
+
+namespace ProcessWire;
+
+return [
+    'title' => 'Title of component',
+    'params' => [
+        'foo' => '',
+    ],
+    'params' => [
+        
+    ],
+    'parent' => [],
+    // cache the output
+    'cache' => function (array $component): array {
+        return [
+            'name' => 'name-of-cache',
+            'expire' => 'expire-time-of-cache'
+        ];
+    },
+    'metadata' => function (array $params, array $component): void {
+        // add some metadata for component
+    },
+    'defaults' => function (array $params, array $component): array {
+        $defaults = [
+            'foo' => 'bar'
+        ];
+        return $defaults;
+    },
+    'transform' => function (array $params, array $component): array {
+        // do something with params
+        return $params;
+    },
+    // 'attrs' => [
+    //     // add more attrs
+    // ],
+    'attrs' => function (array $attrs, array $component): array {
+        // do something with attrs
+        return $attrs;
+    },
+    'fn' => [
+        // add hello method to TemplateFile and use it like $this->hello(); in template
+        'hello' => function (HookEvent $e) {
+            $e->return = 'Hello World';
+        }
+    ],
+    // Check component has required parameters
+    'render' => function(array $params, array $component): bool {
+        return count($params);
+    },
+    // Do something with output
+    // 'output' => function(string $output, array $component): bool {
+    //     return str_replace('<alert />', component('alert', ['content' => 'Warning !']), $output);
+    // }
+];
+```
+
+### Component array output
+
+```php
+[
+    'name' => 'name-of-component', // string
+    'dir' => 'path-of-component', // string
+    'templateFile' => 'template-file-of-component', // string
+    'componentFile' => null, // optional component configuration file, ?string
+    'fieldsFile' => null, // optional fields configuration file, ?string
+    'layouts' => [], // optional ready to use layout files, you can overwrite params by passing `layout` array of layout file list
+    'title' => 'title-of-component', // string 
+    'params' => [], // array
+    'parent' => null, // ?array
+    'cache' => null, // ?callable
+    'metadata' => null, // ?callable
+    'defaults' => null, // ?array|callable
+    'transform' => null, // ?callable
+    'attrs' => null, // ?array|callable
+    'fn' => null, // ?array
+    'render' => null, // ?callable 
+    'output' => null // ?callable
+];
 ```
 
 ### Create `heading` Component Config File **not required**
@@ -123,8 +214,18 @@ return [
 namespace ProcessWire;
 
 /**
- * @var array $params
- * @var array $attrs
+ * @var WireFileTools $files
+ * @var string  $__name Name of the component
+ * @var string  $__title Title of component
+ * @var string  $__dir Directory of component
+ * @var string  $__template Template file of component
+ * @var string  $__component Component file of component
+ * @var string  $__fields Fields file of component
+ * @var array   $__layouts Layouts of component
+ * @var ?array  $parent Parent component
+ * @var array   $params Parameters of component
+ * @var array   $attrs Attributes of component
+ * @var array   $children Children of component
  */
 
 if ($params['size']) {
