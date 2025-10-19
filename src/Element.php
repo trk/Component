@@ -27,7 +27,6 @@ class Element
         $this->name = $name;
         $this->attrs = $attrs;
         $this->contents = $contents;
-
     }
 
     /**

@@ -3,15 +3,46 @@
 namespace ProcessWire;
 
 use Totoglu\Component\Element;
+use Totoglu\Component\Watcher;
 
 /**
  * Component Module for ProcessWire
+ * 
+ * @method void register()
+ * @method void addPath(string $type, string $path)
+ * @method array getPath(string $type)
+ * @method array getPaths()
+ * @method array getAttrs(string $type)
+ * @method void applyTemplateFileMethods()
+ * @method array applyDefaults(array $component, array $params)
+ * @method array applyLayout(array $component)
+ * @method array applyParametersTransform(array $params)
+ * @method array applyTransform(array $component)
+ * @method array addMetadata(array $component)
+ * @method array addFunctions(array $component)
+ * @method bool isCallable(array $component)
+ * @method string renderChildren(array $children, ?array $parent = null)
+ * @method string renderChild(string|array $component, ?array $parent = null)
+ * @method ?array loadComponent(string $name, array $params = [], array $attrs = [])
+ * @method array renderReady(array $component)
+ * @method string render(string|array $name, array $params = [], array $attrs = [], string|null $cacheName = null, int|Page|string|null $cacheExpire = null)
+ * @property bool $disable_cache
  *
  * @author			: İskender TOTOĞLU, @ukyo (community), @trk (Github)
  * @website			: https://www.totoglu.com
  */
 class Component extends WireData implements Module, ConfigurableModule
 {
+    protected array $paths = [
+        'cache' => '',
+        'components' => [],
+        'fields' => [],
+        'layouts' => [],
+        'templates' => [],
+        'functions' => [],
+        'bootstraps' => []
+    ];
+
     protected array $bootstrap = [];
 
     protected array $components = [];
@@ -26,6 +57,7 @@ class Component extends WireData implements Module, ConfigurableModule
 
     protected array $defaults = [
         'params' => [],
+        'layout' => [],
         'parent' => null,
         'children' => [],
         'cache' => null,
@@ -38,6 +70,10 @@ class Component extends WireData implements Module, ConfigurableModule
         'output' => null
     ];
 
+    protected array $transform = [];
+
+    protected Watcher $watcher;
+
     /**
      * Return module info
      *
@@ -48,7 +84,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return [
             'title' => 'Component',
             'description' => 'Module help you to create and use set of components to utilise in your ProcessWire page templates.',
-            'version' => 3,
+            'version' => 4,
             'summary' => '',
             'href' => 'https://www.totoglu.com',
             'author' => 'İskender TOTOĞLU | @ukyo(community), @trk (Github), https://www.totoglu.com',
@@ -59,7 +95,8 @@ class Component extends WireData implements Module, ConfigurableModule
             'installs' => [],
             'permissions' => [],
             'icon' => 'cogs',
-            'autoload' => 1000,
+            // 'autoload' => 1000,
+            'autoload' => true,
             'singular' => true
         ];
     }
@@ -71,6 +108,10 @@ class Component extends WireData implements Module, ConfigurableModule
     {
         // Load composer libraries
         require __DIR__ . '/vendor/autoload.php';
+
+        $this->watcher = new Watcher();
+
+        $this->set('disable_cache', false);
     }
 
     public function wired()
@@ -85,16 +126,37 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     public function init()
     {
-        $this->setComponents();
+        /**
+         * @var Config $config
+         */
+        $config = $this->wire()->config;
 
-        $this->wire()->addHookMethod('TemplateFile::el', function(HookEvent $event) {
+        $siteRoot = $config->paths->site;
+
+        // watch module files
+        $this->watch(__FILE__);
+        $this->watch(__DIR__ . '/FunctionsAPI.php');
+        $this->watch(__DIR__ . '/src/Arr.php');
+        $this->watch(__DIR__ . '/src/Component.php');
+        $this->watch(__DIR__ . '/src/Element.php');
+        $this->watch(__DIR__ . '/src/functions.php');
+        // watch processwire files
+        $this->watch("{$siteRoot}config.php");
+        $this->watch("{$siteRoot}config-dev.php");
+        $this->watch("{$siteRoot}init.php");
+        $this->watch("{$siteRoot}ready.php");
+        $this->watch("{$siteRoot}finished.php");
+        $this->watch($config->paths->templates . ltrim($config->appendTemplateFile, '/'));
+        $this->watch($config->paths->templates . ltrim($config->prependTemplateFile, '/'));
+
+        $this->wire()->addHookMethod('TemplateFile::el', function (HookEvent $event) {
             $tag = $event->arguments(0) ?: 'div';
             $attrs = $event->arguments(1) ?: [];
             $contents = $event->arguments(2) ?: false;
             $event->return = new Element($tag, $attrs, $contents);
         });
 
-        $this->wire()->addHookMethod('TemplateFile::attrs', function(HookEvent $event) {
+        $this->wire()->addHookMethod('TemplateFile::attrs', function (HookEvent $event) {
             $attrs = $event->arguments(0);
             if (!is_array($attrs)) {
                 $attrs = [];
@@ -103,7 +165,7 @@ class Component extends WireData implements Module, ConfigurableModule
         });
 
         foreach (['loadComponentTemplate', 'loadComponent', 'renderChildren', 'renderChild'] as $fn) {
-            $this->wire()->addHookMethod("TemplateFile::{$fn}", function(HookEvent $event) {
+            $this->wire()->addHookMethod("TemplateFile::{$fn}", function (HookEvent $event) {
                 $event->return = call_user_func_array([$this, $event->method], $event->arguments);
             });
         }
@@ -116,16 +178,158 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     public function ready()
     {
-        $bootstrap = $this->getPath('components') . '/bootstrap.php';
-        
-        if (file_exists($bootstrap)) {
-            $bootstrap = include $bootstrap;
-            if (is_array($bootstrap)) {
-                $this->bootstrap = $bootstrap;
+        /**
+         * @var Config $config
+         * @var Page $page
+         */
+        $config = $this->wire()->config;
+        $page = $this->wire()->page;
+
+        if ($page->template && $page->template->filenameExists()) {
+            $this->watch($page->template->filename());
+        }
+
+        // trigger register method
+        $this->register();
+
+        // set module cache path
+        $this->addPath('cache', $config->paths->cache . $this->className());
+        // set site module components
+        $this->addPath('components', $config->paths->siteModules . '*/components');
+        // set site templates base components
+        $this->addPath('components', $config->paths->templates . 'components/base-components');
+        // set site templates components
+        $this->addPath('components', $config->paths->templates . 'components');
+        // set paths
+        $this->setPaths();
+        // set components
+        $this->setComponents();
+        // set extras
+        $this->setComponentExtras('layouts');
+        $this->setComponentExtras('templates');
+        $this->setComponentExtras('fields');
+        // watch extras
+        $this->watch(array_values($this->getComponentFields('fields')));
+        $this->watch(array_values($this->getComponentLayouts('layouts')));
+        $this->watch(array_values($this->getComponentTemplates('templates')));
+
+        // load function and bootstrap files
+        foreach (['functions', 'bootstraps'] as $type) {
+            foreach ($this->getPath($type) as $file) {
+                $this->watch($file);
+                if ($type === 'functions') {
+                    require_once $file;
+                } else {
+                    $bootstrap = include $file;
+                    if (is_array($bootstrap)) {
+                        $this->bootstrap = Arr::merge($this->bootstrap, $bootstrap);
+                    }
+                }
             }
         }
 
         $this->applyTemplateFileMethods();
+    }
+
+    /**
+     * Register components paths
+     * @return void
+     */
+    public function ___register(): void {}
+
+    public function ___addPath(string $type, array|string $path): void
+    {
+        if (isset($this->paths[$type])) {
+            $paths = $this->paths[$type];
+            if (is_array($path)) {
+                $paths = Arr::merge($paths, $path);
+            } else if (is_array($paths) && !in_array($path, $paths)) {
+                $paths[] = $path;
+            } else {
+                $paths = $path;
+            }
+            $this->updatePath($type, $paths);
+        }
+    }
+
+    protected function updatePath(string $type, array|string $paths): void
+    {
+        $this->paths[$type] = $paths;
+    }
+
+    public function ___getPath(string $type): array|string
+    {
+        return $this->paths[$type] ?? [];
+    }
+
+    protected function setPaths(): void
+    {
+        $paths = $this->getPath('components');
+        foreach ($paths as $index => $path) {
+            $path = rtrim($path, '/');
+
+            $fields = $this->globFiles(...[
+                "{$path}/_fields/*/*.{php,json}",
+                "{$path}/_fields/*.{php,json}"
+            ]);
+
+            if ($fields) {
+                $this->addPath('fields', $fields);
+            }
+
+            $layouts = $this->globFiles(...[
+                "{$path}/_layouts/*/*.{php,json}",
+                "{$path}/_layouts/*.{php,json}"
+            ]);
+
+            if ($layouts) {
+                $this->addPath('layouts', $layouts);
+            }
+
+            $templates = $this->globFiles(...[
+                "{$path}/_templates/*/*.php",
+                "{$path}/_templates/*.php"
+            ]);
+
+            if ($templates) {
+                $this->addPath('templates', $templates);
+            }
+
+            if (file_exists("{$path}/functions.php")) {
+                $this->addPath('functions', "{$path}/functions.php");
+            }
+
+            if (file_exists("{$path}/bootstrap.php")) {
+                $this->addPath('bootstraps', "{$path}/bootstrap.php");
+            }
+
+            $paths[$index] = "{$path}/*/templates/template.php";
+        }
+
+        $this->updatePath('components', $paths);
+    }
+
+    public function ___getPaths(): array
+    {
+        return $this->paths;
+    }
+
+    public function watcher(): Watcher
+    {
+        $watcher = new Watcher();
+        $watcher->watch($this->modified());
+        return $watcher;
+    }
+
+    public function watch(Page|Template|array|string|int $watch): Watcher
+    {
+        $this->watcher->watch($watch);
+        return $this->watcher;
+    }
+
+    public function modified(): int
+    {
+        return $this->watcher->modified();
     }
 
     protected function isClosure(mixed $value): bool
@@ -143,46 +347,13 @@ class Component extends WireData implements Module, ConfigurableModule
         return $this->bootstrap;
     }
 
-    private function getPaths(): array
-    {
-        /** @var Config $config */
-        $config = $this->wire()->config;
-
-        $paths = [
-            'cache' => $config->paths->cache . $this->className(),
-            'components' => "{$config->paths->templates}components",
-            'layouts' => "{$config->paths->templates}components/_layouts",
-            'templates' => "{$config->paths->templates}components/_templates",
-            'fields' => "{$config->paths->templates}components/_fields",
-        ];
-
-        return $paths;
-    }
-
-    private function getPath(string $name = 'components'): ?string
-    {
-        $paths = $this->getPaths();
-        $path = $paths[$name] ?? null;
-        
-        if ($path && is_dir($path)) {
-            return $path;
-        }
-
-        if(is_writable(dirname($path)) && $this->wire()->files->mkdir($path)) {
-			$this->message("Created directory: $path");
-            return $path;
-		}
-
-        return null;
-    }
-
     /**
      * Find files matching patterns across multiple paths
      * 
      * @param string ...$patterns One or more glob patterns
      * @return array Array of matching file paths
      */
-    private function globFiles(string ...$patterns): array 
+    private function globFiles(string ...$patterns): array
     {
         $results = [];
         foreach ($patterns as $pattern) {
@@ -192,10 +363,10 @@ class Component extends WireData implements Module, ConfigurableModule
             if (!$result) {
                 $result = glob($pattern, GLOB_NOSORT) ?: [];
             }
-            
+
             $results = array_merge($results, $result);
         }
-        
+
         return array_unique($results);
     }
 
@@ -206,40 +377,28 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     protected function setComponents(): void
     {
-        /** @var Config $config */
-        $config = $this->wire()->config;
+        $paths = $this->getPath('components');
 
-        $args = [
-            "{$config->paths->siteModules}**/components/*/templates/template.{php,json}"
-        ];
-
-        if ($path = $this->getPath('components')) {
-            $args[] = "{$path}/*/templates/template.{php,json}";
-        }
-        
-        foreach ($this->globFiles(...$args) as $filename) {
+        foreach ($this->globFiles(...$paths) as $filename) {
             $dir = dirname(dirname($filename));
             $name = basename($dir);
-            
+
             $component = array_merge([
                 'name' => $name,
                 'dir' => $dir,
                 'templateFile' => $filename,
                 'componentFile' => null,
+                'files' => [],
                 'title' => $name,
             ], $this->defaults);
+
+            $component['files'] = $this->globFiles("{$dir}/*.*", "{$dir}/*/*.*");
 
             if (file_exists("{$dir}/component.php")) {
                 $component['componentFile'] = "{$dir}/component.php";
             }
 
             $this->components[$name] = $component;
-        }
-
-        if (count($this->components)) {
-            $this->setComponentExtras('layouts');
-            $this->setComponentExtras('templates');
-            $this->setComponentExtras('fields');
         }
     }
 
@@ -275,33 +434,21 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     protected function setComponentExtras(string $group): void
     {
-        if ($path = $this->getPath($group)) {
-            if ($group === 'templates') {
-                $args = [
-                    "{$path}/*/*.php",
-                    "{$path}/*.php"
-                ];
-            } else {
-                $args = [
-                    "{$path}/*/*.{php,json}",
-                    "{$path}/*.{php,json}"
-                ];
-            }
-
-            foreach ($this->globFiles(...$args) as $filename) {
+        if ($files = $this->getPath($group)) {
+            foreach ($files as $filename) {
                 $pathinfo = pathinfo($filename);
                 $component = basename($pathinfo['dirname']);
                 if (str_starts_with($component, "_")) {
                     $component = substr($component, 1);
                 }
-                
+
                 if ($component === $group) {
                     $component = $group;
                 }
                 // else if (!isset($this->components[$component])) {
                 //     continue;
                 // }
-                
+
                 $name = "{$component}.{$pathinfo['filename']}";
                 $this->setComponentExtra($group, $name, $filename);
             }
@@ -538,10 +685,10 @@ class Component extends WireData implements Module, ConfigurableModule
     public function loadComponentFields(string|array $nameOrFields, string $prefix = '', array $exclude = [], array $include = [], array $overwrite = []): array|string|null
     {
         $fields = is_array($nameOrFields) ? $nameOrFields : $this->loadExtra('fields', $nameOrFields);
-        
+
         if (is_array($fields) && (count($exclude) || count($include) || count($overwrite) || $prefix)) {
-            
-            if ($fields['children']) {
+
+            if ($fields['children'] ?? []) {
 
                 foreach ($fields['children'] as $key => $field) {
 
@@ -553,7 +700,7 @@ class Component extends WireData implements Module, ConfigurableModule
 
                         $fields['children'][$key] = array_merge($fields['children'][$key], $overwrite[$key]);
                     }
-                    
+
                     if ($exclude && in_array($key, $exclude) && isset($fields['children'][$key])) {
                         unset($fields['children'][$key]);
                     }
@@ -566,11 +713,9 @@ class Component extends WireData implements Module, ConfigurableModule
                         $fields['children'][$prefix . $key] = $fields['children'][$key];
                         unset($fields['children'][$key]);
                     }
-                    
                 }
-
             } else {
-                
+
                 foreach ($fields as $key => $field) {
 
                     if ($overwrite && isset($overwrite[$key])) {
@@ -594,16 +739,13 @@ class Component extends WireData implements Module, ConfigurableModule
                         $fields[$prefix . $key] = $fields[$key];
                         unset($fields[$key]);
                     }
-
                 }
-
             }
-
         }
 
         return $fields;
     }
-    
+
     /**
      * Load component fields array, cache the result
      * 
@@ -641,9 +783,7 @@ class Component extends WireData implements Module, ConfigurableModule
      */
     public function loadComponentFieldsArray(string $component, ?array $fields = null): array
     {
-        $files = [
-            __FILE__
-        ];
+        $files = [];
 
         if (!$fields && isset($this->extras['fields'][$component])) {
             $data = $this->extras['fields'][$component];
@@ -655,7 +795,7 @@ class Component extends WireData implements Module, ConfigurableModule
                 $fields = $this->loadComponentFields($component);
             }
         }
-        
+
         if (isset($fields['children'])) {
             foreach ($fields['children'] as $key => $field) {
 
@@ -678,9 +818,8 @@ class Component extends WireData implements Module, ConfigurableModule
                     $files["{$key},{$extraName}"] = $extra;
                 }
             }
-
         } else {
-            foreach ($fields as $key => $field) {
+            foreach ($fields ?: [] as $key => $field) {
 
                 $extra = null;
                 if (is_array($field) && isset($field['component']) && isset($this->extras['fields'][$field['component']])) {
@@ -700,11 +839,13 @@ class Component extends WireData implements Module, ConfigurableModule
                 } else {
                     $files["{$key},{$extraName}"] = $extra;
                 }
-
             }
         }
 
+
         if (count($files)) {
+
+            $this->watch($files);
 
             // Add the file that called this function
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
@@ -714,14 +855,6 @@ class Component extends WireData implements Module, ConfigurableModule
                 }
             }
 
-            $lastModified = 0;
-            foreach (array_values($files) as $file) {
-                $mtime = filemtime($file);
-                if ($mtime > $lastModified) {
-                    $lastModified = $mtime;
-                }
-            }
-            
             $filename = $component;
             if (isset($this->wire()->user->language) && !$this->wire()->user->language->isDefault()) {
                 $filename .= '-' . $this->wire()->user->language->id;
@@ -729,21 +862,21 @@ class Component extends WireData implements Module, ConfigurableModule
             $filename = md5($filename);
             $cacheFile = $this->getPath('cache') . "/{$filename}.php";
 
-            if (file_exists($cacheFile) && $lastModified < filemtime($cacheFile)) {
+            if (file_exists($cacheFile) && $this->modified() < filemtime($cacheFile)) {
                 $fields = include $cacheFile;
             } else {
-                
+
                 if (isset($fields['children'])) {
 
                     foreach ($files as $key => $file) {
-                        
+
                         if (!is_string($key)) {
                             continue;
                         }
                         list($fieldName, $extraName) = explode(',', $key);
-                        
+
                         $value = $fields['children'][$fieldName];
-                        
+
                         $prefix = '';
                         $exclude = [];
                         $include = [];
@@ -751,14 +884,13 @@ class Component extends WireData implements Module, ConfigurableModule
 
                         if (is_array($value)) {
                             $extraName =
-                            $prefix = $value['prefix'] ?? '';
+                                $prefix = $value['prefix'] ?? '';
                             $exclude = $value['exclude'] ?? [];
                             $include = $value['include'] ?? [];
                             $overwrite = $value['overwrite'] ?? [];
                         }
                         $fields['children'][$fieldName] = $this->loadComponentFields($extraName, $prefix, $exclude, $include, $overwrite);
                     }
-
                 } else {
 
                     foreach ($files as $key => $file) {
@@ -768,9 +900,9 @@ class Component extends WireData implements Module, ConfigurableModule
                         }
 
                         list($fieldName, $extraName) = explode(',', $key);
-                        
+
                         $value = $fields[$fieldName];
-                        
+
                         $prefix = '';
                         $exclude = [];
                         $include = [];
@@ -783,26 +915,24 @@ class Component extends WireData implements Module, ConfigurableModule
                             $include = $value['include'] ?? [];
                             $overwrite = $value['overwrite'] ?? [];
                         }
-                        
+
                         $fields[$fieldName] = $this->loadComponentFields($extraName, $prefix, $exclude, $include, $overwrite);
                     }
-
                 }
 
                 // Write cache file with all used functions and variables
                 $content = "<?php\n\n";
                 $content .= "namespace ProcessWire;\n\n";
-                
+
                 // Export fields array
                 $content .= "return " . var_export($fields, true) . ";";
-                
+
                 // Write to cache file
                 $this->wire()->files->filePutContents($cacheFile, $content);
             }
-
         }
 
-        return $fields;
+        return is_array($fields) ? $fields : [];
     }
 
     /**
@@ -830,6 +960,7 @@ class Component extends WireData implements Module, ConfigurableModule
             } else {
                 $componentData = include $component['componentFile'];
             }
+
             if (is_array($componentData)) {
                 $component = array_merge($component, $componentData);
             }
@@ -847,7 +978,7 @@ class Component extends WireData implements Module, ConfigurableModule
                 continue;
             }
 
-            $method = '___apply' .strtoupper($key);
+            $method = '___apply' . strtoupper($key);
 
             if (method_exists($this, $method)) {
                 if (!empty($params)) {
@@ -910,15 +1041,18 @@ class Component extends WireData implements Module, ConfigurableModule
         return $component['params'];
     }
 
-    public function ___applyLayout(array $component, array $params): array
+    public function ___applyLayout(array $component): array
     {
-        $layout = isset($params['layout']) ? $this->loadComponentLayout($params['layout']) : null;
-        
-        if (is_array($layout) && isset($layout['params']) && is_array($layout['params'])) {
-            $component['params'] = array_merge($component['params'], $layout['params']);
+        $params = $component['params'];
+        $layout = isset($params['layout']) && is_string($params['layout']) ? $this->loadComponentLayout($params['layout']) : [];
+
+        if (!is_array($layout)) {
+            $layout = [];
         }
 
-        return $component['params'];
+        $component['layout'] = $layout;
+
+        return $component;
     }
 
     /**
@@ -961,7 +1095,7 @@ class Component extends WireData implements Module, ConfigurableModule
     }
 
     public function ___applyFunctions(array $component): void
-    {   
+    {
         if (is_array($component['fn'])) {
             foreach ($component['fn'] as $name => $fn) {
                 $this->wire()->addHookMethod("TemplateFile::{$name}", $fn);
@@ -971,7 +1105,7 @@ class Component extends WireData implements Module, ConfigurableModule
 
     public function ___isCacheable(array $component): bool
     {
-        return !$this->wire()->config->debug || !$this->wire()->user->isSuperuser();
+        return !$this->disable_cache || !$this->wire()->config->debug || !$this->wire()->user->isSuperuser();
     }
 
     public function ___renderChildren(array $children, ?array $parent = null): string
@@ -988,6 +1122,9 @@ class Component extends WireData implements Module, ConfigurableModule
     public function ___renderChild(string|array $component, ?array $parent = null): string
     {
         if (is_array($component)) {
+            if ($parent && $parent['layout'] && isset($parent['layout']['item'])) {
+                $component['params'] = array_merge($component['params'], $parent['layout']['item']);
+            }
             $component['parent'] = $parent;
             return $this->render($component);
         }
@@ -1005,8 +1142,13 @@ class Component extends WireData implements Module, ConfigurableModule
 
         $component['params'] = $this->applyDefaults($component, $params);
         $component['params'] = array_merge($component['params'], $params);
-        $component['params'] = $this->applyLayout($component, $params);
-        
+
+        $component = $this->applyLayout($component);
+
+        if (isset($component['layout']['params']) && $component['layout']['params']) {
+            $component['params'] = array_merge($component['params'], $component['layout']['params']);
+        }
+
         if (!$component['children'] && isset($component['params']['children'])) {
             $component['children'] = $component['params']['children'];
         }
@@ -1040,7 +1182,7 @@ class Component extends WireData implements Module, ConfigurableModule
         }
 
         $component['params'] = $this->applyTransform($component);
-        
+
         $render = true;
 
         if ($component['render']) {
@@ -1050,13 +1192,13 @@ class Component extends WireData implements Module, ConfigurableModule
                 $render = $component['render'];
             }
         }
-        
+
         if (!$render) {
             return '';
         }
 
         $this->apply($component, ['metadata']);
-        
+
         $component = $this->renderReady($component);
 
         if (!isset($component['params']['template'])) {
@@ -1071,33 +1213,35 @@ class Component extends WireData implements Module, ConfigurableModule
             '__dir' => "{$component['dir']}/templates",
             '__template' => $component['templateFile'],
             '__component' => $component['componentFile'],
+            '__files' => $component['files'],
             'parent' => $component['parent'],
             'params' => $component['params'],
+            'layout' => $component['layout'],
             'attrs' => $component['attrs'],
             'children' => $component['children']
         ];
-        
+
         $parameters['component'] = $parameters;
-        
+
         $parameters = $this->applyParametersTransform($parameters);
 
         $cached = false;
 
         $output = '';
-        
+
         if ($this->isCacheable($component)) {
-            
+
             $cache = [
                 'name' => $cacheName,
                 'expire' => $cacheExpire
             ];
-    
+
             if ($component['cache'] && !$cache['name'] && !$cache['expire']) {
 
                 if (is_callable($component['cache'])) {
                     $component['cache'] = $component['cache']($component);
                 }
-    
+
                 if (is_array($component['cache'])) {
                     if (isset($component['cache']['name'])) {
                         $cache['name'] = $component['cache']['name'];
@@ -1106,10 +1250,10 @@ class Component extends WireData implements Module, ConfigurableModule
                         $cache['expire'] = $component['cache']['expire'];
                     }
                 }
-                
             }
-    
+
             // if we use directly this method, result directly stored in database, check for cache name and expire before store output
+            // !@TODO use WireCache, this one not working well
             if ($cache['name'] && $cache['expire']) {
                 $cached = true;
                 $output = $this->wire()->cache->renderFile($component['templateFile'], $cache['expire'], [
@@ -1117,7 +1261,6 @@ class Component extends WireData implements Module, ConfigurableModule
                     'vars' => $parameters
                 ]);
             }
-
         }
 
         if (!$output && !$cached) {
@@ -1134,12 +1277,12 @@ class Component extends WireData implements Module, ConfigurableModule
     }
 
     /**
-	 * Module configurations
-	 * 
-	 * @param InputfieldWrapper $inputfields
-	 *
-	 */
-	public function getModuleConfigInputfields(InputfieldWrapper $inputfields)
+     * Module configurations
+     * 
+     * @param InputfieldWrapper $inputfields
+     *
+     */
+    public function getModuleConfigInputfields(InputfieldWrapper $inputfields)
     {
         /** @var Modules $modules */
         $modules = $this->wire()->modules;
@@ -1156,9 +1299,20 @@ class Component extends WireData implements Module, ConfigurableModule
 
         /** @var InputfieldFieldset @fieldset */
         $fieldset = $modules->get('InputfieldFieldset');
-        $fieldset->label = $this->_('Clear components cache data');
+        $fieldset->label = $this->_('Cache control');
         $fieldset->icon = 'icon-refresh';
         $fieldset->collapsed = Inputfield::collapsedYes;
+
+        /**
+         * @var InputfieldCheckbox $checkbox
+         */
+        $checkbox = $modules->get('InputfieldCheckbox');
+        $checkbox->attr('name', "disable_cache");
+        $checkbox->attr('value', $this->disable_cache);
+        $checkbox->checked = $this->disable_cache ?: false;
+        $checkbox->label = $this->_('Disable module caching');
+        $checkbox->checkboxLabel = $this->_('Disable cache');
+        $fieldset->add($checkbox);
 
         /**
          * @var InputfieldCheckbox $checkbox
@@ -1169,11 +1323,12 @@ class Component extends WireData implements Module, ConfigurableModule
         $checkbox->label = $this->_('Clear component cache data ?');
         $checkbox->description = sprintf($this->_('There are currently %d components cached'), count($cached));
         $checkbox->checkboxLabel = $this->_('Clear cache data');
+        $checkbox->showIf = 'disable_cache!=1';
 
         $fieldset->add($checkbox);
 
         $inputfields->add($fieldset);
-        
+
         return $inputfields;
     }
 }
