@@ -2,7 +2,7 @@ name: "Tag, Release"
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - "Component.module.php"
 jobs:
