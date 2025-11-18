@@ -6,7 +6,7 @@ use Totoglu\Component\Element;
 use Totoglu\Component\Watcher;
 
 /**
- * Component Module for ProcessWire
+ * Component Module for ProcessWire 
  * 
  * @method void register()
  * @method void addPath(string $type, string $path)
