@@ -33,6 +33,8 @@ use Totoglu\Component\Watcher;
  */
 class Component extends WireData implements Module, ConfigurableModule
 {
+    const VERSION = "0.0.4";
+
     protected array $paths = [
         'cache' => '',
         'components' => [],
@@ -84,7 +86,7 @@ class Component extends WireData implements Module, ConfigurableModule
         return [
             'title' => 'Component',
             'description' => 'Module help you to create and use set of components to utilise in your ProcessWire page templates.',
-            'version' => 4,
+            'version' => self::VERSION,
             'summary' => '',
             'href' => 'https://www.totoglu.com',
             'author' => 'İskender TOTOĞLU | @ukyo(community), @trk (Github), https://www.totoglu.com',
